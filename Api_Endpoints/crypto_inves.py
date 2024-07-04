@@ -8,14 +8,9 @@ def crypto_inves(hash):
 
     try:
         response = requests.get(url, headers=headers)
-        print(f"Response Status Code: {response.status_code}")
-        print(
-            f"Response Content: {response.content.decode()}"
-        )  # Print full response content for debugging
-
         if response.status_code == 200:
-            return {"status": 200, "data": response.json()}
-        return {"status": response.status_code, "data": {}}
+            return response.json()
+        return {}
     except Exception as e:
-        return {"data": {}, "status": 500, "error": str(e)}
+        return {"error": str(e)}
 

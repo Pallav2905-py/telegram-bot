@@ -3,7 +3,7 @@ from alltrials import *
 import firebase_admin
 from firebase_admin import credentials
 from telebot import types
-from pdf_template import create_phone_pdf, generate_pdf_gmail
+from pdf_template import create_phone_pdf, generate_crypto_pdf, generate_pdf_gmail
 from auth import check_user_auth, decrement_credits
 from constants import welcome_message, help_message, purchase_not_activated
 from firebase_admin import credentials, firestore
@@ -17,7 +17,7 @@ from Api_Endpoints.upi_lookup import upi_lookup
 from Api_Endpoints.whois_lookup import whois_lookup
 
 # Initialize Firebase
-cred = credentials.Certificate("cred_prod.json")
+cred = credentials.Certificate("cred.json")
 firebase_admin.initialize_app(cred)
 db = firestore.client()
 
@@ -73,10 +73,13 @@ def callback_query(call):
     elif call.data == "breached_email":
         msg = bot.send_message(call.message.chat.id, "Please enter a Valis Email ID: :")
         bot.register_next_step_handler(msg, handle_leak_check)
+    elif call.data == "cryptocurrency":
+        msg = bot.send_message(call.message.chat.id, "Please enter a Valid Hash: ")
+        bot.register_next_step_handler(msg, hadle_crypto_inves)
     elif call.data == "complete_email":
         msg = bot.send_message(call.message.chat.id, "Please enter a Valid Email ID: ")
         bot.register_next_step_handler(msg, handle_complete_email)
-    elif call.data=="upi_accounts" or "upi_lookup":
+    elif call.data=="upi_accounts" or call.data == "upi_lookup":
         msg = bot.send_message(call.message.chat.id, "Please enter a Valid UPI ID / Phone Number: ")
         bot.register_next_step_handler(msg, handle_upi_lookup)         
     elif call.data == "domain_lookup":
@@ -84,9 +87,6 @@ def callback_query(call):
     elif call.data == "ifsc_search":
         msg = bot.send_message(call.message.chat.id, "Please enter a Valid IFSC Code: ")
         bot.register_next_step_handler(msg, handle_ifsc)
-    elif call.data == "cryptocurrency":
-        msg = bot.send_message(call.message.chat.id, "Please enter a Valid Hash: ")
-        bot.register_next_step_handler(msg, hadle_crypto_inves)
     elif call.data == "whois_lookup":
         msg = bot.send_message(call.message.chat.id, "Please enter a Valid Domain : ")
         bot.register_next_step_handler(msg, handle_whois_lookup)
@@ -602,24 +602,21 @@ def hadle_crypto_inves(message):
         if user_data["credits"] > 0:
             hash = message.text
             hash_data = crypto_inves(hash)
+            transactions = hash_data.get('Transaction', [])  # Extract 'data' part from JSON
+    
+            if transactions:
+                generate_crypto_pdf(transactions)
+                bot.reply_to(
+                    message,
+                    "Here is the response with Transaction Information.",
+                )
+                with open("crypto_transactions.pdf", "rb") as f:
+                    bot.send_document(message.chat.id, f)
+            else:
+                bot.send_message(message.chat.id, "No transaction data found.")
 
-            # data =
 
-            # source_details = "\n ".join([f'{source["name"]} ({source["date"]})' for source in email_data['sources']])
-
-            # message_text = (
-            #     f"Email valid: {email_data['success']}\n"
-            #     f"Found: {email_data['found']}\n"
-            #     f"Fields: {', '.join(email_data['fields'])}\n"
-            #     f"Sources: {source_details}"
-            # )
-            # bot.send_message(message.chat.id, message_text)
-
-            bot.send_message(message.chat.id, format_dict(hash_data))
-            bot.reply_to(
-                message,
-                "Here is the response with Transaction Information.",
-            )
+            # bot.send_message(message.chat.id, format_dict(hash_data))
 
             # Decrement user credits
             decrement_credits(user_data)
@@ -693,16 +690,18 @@ def handle_upi_lookup(message):
         if user_data["credits"] > 0:
             vpa = message.text
             vpa_data = upi_lookup(vpa)
-
             # data =
-            bot.send_message(message.chat.id, format_dict(vpa_data))
-            bot.reply_to(
-                message,
-                "Here is the response with UPI Information.",
-            )
+            if vpa_data.get("status",500) == 200:
+                bot.send_message(message.chat.id, format_dict(vpa_data))
+                bot.reply_to(
+                    message,
+                    "Here is the response with UPI Information.",
+                )
+                decrement_credits(user_data)
+            else:
+                bot.send_message(message.chat.id, "Invalid VPA OR Internal Server Error Occured.")
 
             # Decrement user credits
-            decrement_credits(user_data)
         else:
             bot.reply_to(
                 message, "You have no credits left. Please recharge your account."

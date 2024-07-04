@@ -301,3 +301,56 @@ def generate_pdf_gmail(data_dict, filename="response.pdf"):
     pdf_content = pdf.output(dest="S").encode("latin-1")
     with open(filename, "wb") as f:
         f.write(pdf_content)
+
+
+def generate_crypto_pdf(data, filename="crypto_transactions.pdf"):
+    # Initialize PDF document
+    pdf = PDF()
+    pdf.header()
+    pdf.add_page()
+    pdf.chapter_title("Crypto Investigation Report")
+    pdf.set_auto_page_break(auto=True, margin=15)
+
+    # Title
+    pdf.set_font("Arial", size=12)
+    pdf.cell(200, 10, txt="Cryptocurrency Transactions", ln=True, align="C")
+
+    # Add transaction details
+    for index, transaction in enumerate(data):
+        pdf.set_font("Arial", size=10)
+        pdf.cell(0, 10, f"Transaction {index + 1}", ln=True)
+        pdf.set_font("Arial", size=9)
+
+        # Extract data safely
+        transaction_id = transaction.get('Transaction', '')
+        confirmation = transaction.get('Confirmation', '')
+        time = transaction.get('Time', '')
+
+        # Transaction details
+        pdf.multi_cell(0, 8, f"Transaction: {transaction_id}", align='L')
+        pdf.multi_cell(0, 8, f"Confirmation: {confirmation}", align='L')
+        pdf.multi_cell(0, 8, f"Time: {time}", align='L')
+
+        # Add a separator line
+        pdf.set_draw_color(0, 0, 0)
+        pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+        pdf.ln()
+
+    # Output the PDF to a file
+    pdf.output(filename)
+
+api_url = "https://api-crypto-u33s.onrender.com/get-transactions?hash=TXk363ThKzQXQzPC1QQezkLgr3QajApArX"
+response = requests.get(api_url)
+
+if response.status_code == 200:
+    data = response.json()  # Parse JSON response
+    transactions = data.get('Transaction', [])  # Extract 'data' part from JSON
+    
+    if transactions:
+        generate_crypto_pdf(transactions)
+    else:
+        print("No transaction data found.")
+else:
+    print(f"Failed to fetch data from API. Status code: {response.status_code}")
+
+

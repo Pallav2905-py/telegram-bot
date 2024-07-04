@@ -9,7 +9,7 @@ def upi_lookup(vpa):
     try:
         response = requests.get(url, headers=headers)
         if response.status_code == 200:
-            return response.json()
+            return {"status": 200, "data" : response.json()}
         return {"status": response.status_code, "data": {}}
     except Exception as e:
         return {"data": {}, "status": 500, "error": str(e)}
